@@ -25,7 +25,7 @@ unifi: dict = {
     "port": os.environ.get("UNIFI_PORT", 443),
     "username": os.environ.get("UNIFI_USERNAME"),
     "password": os.environ.get("UNIFI_PASSWORD"),
-    "version": os.environ.get("UNIFI_VERSION", "v5"),
+    "version": os.environ.get("UNIFI_VERSION", "UDMP-unifiOS"),
     "site_id": os.environ.get("UNIFI_SITE", "default"),
     "ssl_verify": False
 }

@@ -1,1 +1,1 @@
-*/5 * * * * python /sync.py
+*/2 * * * * python /sync.py
