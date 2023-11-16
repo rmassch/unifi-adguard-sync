@@ -80,8 +80,11 @@ class AdguardController:
 
         clients = []
         if "clients" in j.keys():
-            clients = [ Client(name=client["name"], identifiers=client["ids"]) for client in j["clients"]]
+            if j["clients"]:
+                clients = [ Client(name=client["name"], identifiers=client["ids"]) for client in j["clients"]]
         return clients
+            
+        
 
     def overwrite_client(self, name:str, new_name: str, ip: str):
         self.delete_client(name=name)
@@ -158,13 +161,16 @@ class UnifiAdguardSyncClient:
                 if key in client.keys():
                     if client[key] != "" and client[key] != None:
                         obj[key] = client[key]
+            
+            if "ip" not in obj.keys():
+                continue
 
             if "name" not in obj.keys():
                 if "hostname" in obj.keys():
                     obj["name"] = obj["hostname"]
                 else:
                     obj["name"] = obj["mac"]
-
+            
             c = Client(obj["name"], [obj["ip"]])
             self.unifi_clients.append(c)
 
@@ -182,20 +188,26 @@ class UnifiAdguardSyncClient:
         logging.info(f"Found {len(self.adguard_clients)} Adguard Client(s)")
 
         unifi_client_names = [uc.name for uc in self.unifi_clients]
+
         duplicates = {i:unifi_client_names.count(i) for i in unifi_client_names if unifi_client_names.count(i) > 1}
         for duplicate, nr in duplicates.items():
             logging.info(f"Found {nr} device(s) named {duplicate}, please fix in Unifi")
         
 
         for uc in self.unifi_clients:
+
+            # Check for duplicates
             if uc.name in duplicates.keys():
                 logging.info(f"Skipping {uc.name}")
                 continue
             synced = False
             uc_ip = uc.identifiers[0]
             for ac in self.adguard_clients:
+                if ac.name == uc.name and uc_ip not in ac.identifiers:
+                    logging.info(f"Found existing adguard client with name {ac.name}. Deleting...")
+                    self.adguard.delete_client(name=ac.name)
                 if uc_ip in ac.identifiers:
-                    logging.info(f"Found IP: {uc_ip}, Unifi Name: {uc.name}, Adguard Name: {ac.name}")
+                    logging.info(f"Matched IP: {uc_ip}, Unifi Name: {uc.name}, Adguard Name: {ac.name}")
                     if uc.name != ac.name:
                         self.adguard.overwrite_client(name=ac.name, new_name=uc.name, ip=uc_ip)
                     synced = True
@@ -216,12 +228,13 @@ def main():
     logging.info("Starting sync")
     a = AdguardController(**adguard)
     
-    
     uasc = UnifiAdguardSyncClient(unifi=u, adguard=a)
     uasc.sync()
-    logging.info("Finished sync")
-    
 
+    logging.info("Finished sync")
+
+
+### Issue with no Adguard clients
 
 if __name__ == "__main__":
     main()
